@@ -1,0 +1,256 @@
+{% extends "billing/base.html" %}
+{% block title %}Bill #{{ purchase.pk }} – Billing System{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Page header ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .page-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .page-header .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ── Meta info table ── */
+  .meta-table td {
+    padding: 4px 10px 4px 0;
+    font-size: 13px;
+  }
+  .meta-table td:first-child {
+    font-weight: 600;
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    padding-right: 16px;
+  }
+
+  /* ── Bill items table ── */
+  .bill-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+  .bill-table colgroup .col-id    { width: 12%; }
+  .bill-table colgroup .col-price { width: 15%; }
+  .bill-table colgroup .col-qty   { width: 9%; }
+  .bill-table colgroup .col-tax   { width: 8%; }
+
+  .bill-table thead th {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e0e0e0;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bill-table thead th:first-child {
+    text-align: left;
+  }
+  .bill-table tbody tr:hover {
+    background: #fafafa;
+  }
+  .bill-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+  .bill-table tbody td:first-child {
+    text-align: left;
+    font-weight: 500;
+  }
+
+  /* ── Summary table ── */
+  .summary-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+  .summary-table {
+    width: 360px;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .summary-table td {
+    padding: 5px 10px;
+  }
+  .summary-table td:first-child {
+    color: #444;
+  }
+  .summary-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 90px;
+  }
+  .summary-table .total-row td {
+    border-top: 2px solid #e0e0e0;
+    padding-top: 10px;
+    font-size: 14px;
+  }
+
+  /* ── Denomination grid ── */
+  .denom-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px 16px;
+    font-size: 13px;
+  }
+  .denom-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f7f7f7;
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  .denom-item .denom-label { color: #555; }
+  .denom-item .denom-count { font-weight: 700; font-size: 14px; }
+
+  /* ── Footer note ── */
+  .bill-footer {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #999;
+  }
+
+  /* ── Print styles ── */
+  @media print {
+    .page-header .actions,
+    .bill-footer { display: none; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+
+<!-- Page Header -->
+<div class="page-header">
+  <h1>Billing Page — Page 2</h1>
+  <div class="actions">
+    <a href="{% url 'billing:billing_form' %}" class="btn btn-secondary btn-sm">New Bill</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print</button>
+  </div>
+</div>
+
+<!-- Receipt Card -->
+<div class="card">
+  <div class="card-title">Bill Receipt — Purchase #{{ purchase.pk }}</div>
+
+  <!-- Meta Info -->
+  <table class="meta-table" style="margin-bottom:12px;">
+    <tr>
+      <td>Customer Email</td>
+      <td>{{ purchase.customer_email }}</td>
+    </tr>
+    <tr>
+      <td>Date &amp; Time</td>
+      <td>{{ purchase.created_at|date:"d M Y, H:i" }}</td>
+    </tr>
+  </table>
+
+  <hr class="separator" />
+
+  <!-- Bill Section -->
+  <div class="card-title" style="font-size:13px;margin-bottom:10px;">Bill Section</div>
+
+  <table class="bill-table">
+    <colgroup>
+      <col class="col-id" />
+      <col class="col-price" />
+      <col class="col-qty" />
+      <col class="col-price" />
+      <col class="col-tax" />
+      <col class="col-price" />
+      <col class="col-price" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Product ID</th>
+        <th>Unit Price (₹)</th>
+        <th>Qty</th>
+        <th>Purchase Price (₹)</th>
+        <th>Tax %</th>
+        <th>Tax Payable (₹)</th>
+        <th>Total (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in purchase.items.all %}
+      <tr>
+        <td>{{ item.product.product_id }}</td>
+        <td>{{ item.unit_price_at_purchase|floatformat:2 }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.purchase_price|floatformat:2 }}</td>
+        <td>{{ item.tax_percentage_at_purchase }}%</td>
+        <td>{{ item.tax_payable|floatformat:2 }}</td>
+        <td>{{ item.total_price|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr class="separator" />
+
+  <!-- Summary -->
+  <div class="summary-wrap">
+    <table class="summary-table">
+      <tr>
+        <td>Total price without tax:</td>
+        <td><strong>{{ purchase.total_price_without_tax|floatformat:2 }}</strong></td>
+      </tr>
+      <tr>
+        <td>Total tax payable:</td>
+        <td><strong>{{ purchase.total_tax_payable|floatformat:2 }}</strong></td>
+      </tr>
+      <tr>
+        <td>Net price of purchased items:</td>
+        <td><strong>{{ purchase.net_price|floatformat:2 }}</strong></td>
+      </tr>
+      <tr>
+        <td>Rounded down net price:</td>
+        <td><strong>{{ purchase.rounded_net_price|floatformat:2 }}</strong></td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Balance payable to customer:</strong></td>
+        <td style="color:#2d9c3e;">
+          <strong>{{ purchase.balance_payable|floatformat:2 }}</strong>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- Balance Denomination Card -->
+{% if balance_denom %}
+<div class="card">
+  <div class="card-title">Balance Denomination</div>
+  <div class="denom-grid">
+    {% for denom, count in balance_denom.items %}
+    <div class="denom-item">
+      <span class="denom-label">₹ {{ denom }}</span>
+      <span class="denom-count">× {{ count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Footer -->
+<div class="bill-footer">
+  📧 Invoice sent to {{ purchase.customer_email }}
+</div>
+
+{% endblock %}

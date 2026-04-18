@@ -1,0 +1,4 @@
+Django>=4.2,<5.0
+celery>=5.3
+redis>=5.0
+django-celery-results>=2.5

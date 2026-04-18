@@ -1,0 +1,61 @@
+{% extends "billing/base.html" %}
+{% block title %}Purchase History{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-title">Purchase History</div>
+
+  <form method="get" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:16px;">
+    <div>
+      <label for="email">Filter by Customer Email</label>
+      <input type="email" id="email" name="email" value="{{ email }}"
+             placeholder="customer@example.com" style="max-width:280px;" />
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    {% if email %}
+    <a href="{% url 'billing:purchase_history' %}" class="btn btn-secondary btn-sm">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if email %}
+  <p style="margin-bottom:12px;font-size:13px;color:#555;">
+    Showing purchases for <strong>{{ email }}</strong>
+    — {{ purchases|length }} result(s)
+  </p>
+  {% endif %}
+
+  {% if purchases %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Customer Email</th>
+        <th>Date &amp; Time</th>
+        <th class="text-right">Net Price (₹)</th>
+        <th class="text-right">Cash Paid (₹)</th>
+        <th class="text-right">Balance (₹)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in purchases %}
+      <tr>
+        <td>{{ p.pk }}</td>
+        <td>{{ p.customer_email }}</td>
+        <td>{{ p.created_at|date:"d M Y, H:i" }}</td>
+        <td class="text-right">{{ p.rounded_net_price|floatformat:2 }}</td>
+        <td class="text-right">{{ p.cash_paid|floatformat:2 }}</td>
+        <td class="text-right">{{ p.balance_payable|floatformat:2 }}</td>
+        <td>
+          <a href="{% url 'billing:purchase_detail' p.pk %}" class="btn btn-primary btn-sm">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="text-align:center;color:#888;padding:32px;">
+    No purchases found{% if email %} for {{ email }}{% endif %}.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

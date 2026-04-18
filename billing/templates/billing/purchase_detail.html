@@ -1,0 +1,214 @@
+{% extends "billing/base.html" %}
+{% block title %}Purchase #{{ purchase.pk }} – History{% endblock %}
+
+{% block content %}
+<style>
+  .bill-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+  .bill-table thead th {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e0e0e0;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bill-table thead th:first-child { text-align: left; }
+  .bill-table tbody tr:hover { background: #fafafa; }
+  .bill-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+  .bill-table tbody td:first-child { text-align: left; font-weight: 500; }
+
+  .summary-wrap { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .summary-table { width: 360px; border-collapse: collapse; font-size: 13px; }
+  .summary-table td { padding: 5px 10px; }
+  .summary-table td:first-child { color: #444; }
+  .summary-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 90px;
+  }
+  .summary-table .total-row td {
+    border-top: 2px solid #e0e0e0;
+    padding-top: 10px;
+    font-size: 14px;
+  }
+
+  .meta-table td { padding: 4px 10px 4px 0; font-size: 13px; }
+  .meta-table td:first-child {
+    font-weight: 600;
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    padding-right: 16px;
+  }
+
+  .denom-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px 16px;
+    font-size: 13px;
+  }
+  .denom-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f7f7f7;
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  .denom-item .denom-label { color: #555; }
+  .denom-item .denom-count { font-weight: 700; font-size: 14px; }
+
+  @media print {
+    .page-header .actions { display: none; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+
+<!-- Page Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+  <h1 style="font-size:18px;font-weight:700;margin:0;">Purchase Detail — #{{ purchase.pk }}</h1>
+  <div style="display:flex;gap:8px;">
+    <a href="{% url 'billing:purchase_history' %}" class="btn btn-secondary btn-sm">← Back to History</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print</button>
+  </div>
+</div>
+
+<!-- Receipt Card -->
+<div class="card">
+  <div class="card-title">Bill Receipt — Purchase #{{ purchase.pk }}</div>
+
+  <table class="meta-table" style="margin-bottom:12px;">
+    <tr>
+      <td>Customer Email</td>
+      <td>{{ purchase.customer_email }}</td>
+    </tr>
+    <tr>
+      <td>Date &amp; Time</td>
+      <td>{{ purchase.created_at|date:"d M Y, H:i" }}</td>
+    </tr>
+  </table>
+
+  <hr class="separator" />
+
+  <div class="card-title" style="font-size:13px;margin-bottom:10px;">Bill Section</div>
+
+  <table class="bill-table">
+    <colgroup>
+      <col style="width:12%;" />
+      <col style="width:15%;" />
+      <col style="width:9%;" />
+      <col style="width:15%;" />
+      <col style="width:8%;" />
+      <col style="width:15%;" />
+      <col style="width:15%;" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Product ID</th>
+        <th>Unit Price (₹)</th>
+        <th>Qty</th>
+        <th>Purchase Price (₹)</th>
+        <th>Tax %</th>
+        <th>Tax Payable (₹)</th>
+        <th>Total (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in purchase.items.all %}
+      <tr>
+        <td>{{ item.product.product_id }}</td>
+        <td>{{ item.unit_price_at_purchase|floatformat:2 }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.purchase_price|floatformat:2 }}</td>
+        <td>{{ item.tax_percentage_at_purchase }}%</td>
+        <td>{{ item.tax_payable|floatformat:2 }}</td>
+        <td>{{ item.total_price|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr class="separator" />
+
+  <!-- Summary -->
+  <div class="summary-wrap">
+    <table class="summary-table">
+      <tr>
+        <td>Total price without tax:</td>
+        <td><strong>{{ purchase.total_price_without_tax|floatformat:2 }}</strong></td>
+      </tr>
+      <tr>
+        <td>Total tax payable:</td>
+        <td><strong>{{ purchase.total_tax_payable|floatformat:2 }}</strong></td>
+      </tr>
+      <tr>
+        <td>Net price of purchased items:</td>
+        <td><strong>{{ purchase.net_price|floatformat:2 }}</strong></td>
+      </tr>
+      <tr>
+        <td>Rounded down net price:</td>
+        <td><strong>{{ purchase.rounded_net_price|floatformat:2 }}</strong></td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Balance payable to customer:</strong></td>
+        <td style="color:#2d9c3e;">
+          <strong>{{ purchase.balance_payable|floatformat:2 }}</strong>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- Cash & Denomination Info -->
+<div class="card">
+  <div class="card-title">Payment Info</div>
+  <table class="meta-table" style="margin-bottom:0;">
+    <tr>
+      <td>Cash Paid</td>
+      <td style="font-variant-numeric:tabular-nums;">
+        ₹ {{ purchase.cash_paid|floatformat:2 }}
+      </td>
+    </tr>
+    <tr>
+      <td>Balance Returned</td>
+      <td style="font-variant-numeric:tabular-nums;color:#2d9c3e;font-weight:700;">
+        ₹ {{ purchase.balance_payable|floatformat:2 }}
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Balance Denomination -->
+{% with balance_denom=purchase.balance_denomination %}
+{% if balance_denom %}
+<div class="card">
+  <div class="card-title">Balance Denomination</div>
+  <div class="denom-grid">
+    {% for denom, count in balance_denom.items %}
+    {% if count > 0 %}
+    <div class="denom-item">
+      <span class="denom-label">₹ {{ denom }}</span>
+      <span class="denom-count">× {{ count }}</span>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endwith %}
+
+{% endblock %}

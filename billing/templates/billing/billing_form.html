@@ -1,0 +1,221 @@
+{% extends "billing/base.html" %}
+{% block title %}New Bill – Billing System{% endblock %}
+{% block content %}
+{% csrf_token %}
+<!-- Product suggestions datalist -->
+<datalist id="product-list">
+  {% for product in products %}
+  <option value="{{ product.product_id }}" label="{{ product.name }} | ₹{{ product.unit_price }} | Stock: {{ product.available_stocks }}">
+  {% endfor %}
+</datalist>
+<div class="card">
+  <div class="card-title">Billing Page — Page 1</div>
+
+  <div id="error-box" class="alert alert-error" style="display:none;"></div>
+
+  <!-- Customer Email -->
+  <div style="margin-bottom:16px;">
+    <label for="customer_email">Customer Email</label>
+    <input type="email" id="customer_email" placeholder="customer@example.com" style="max-width:320px;" />
+  </div>
+
+  <!-- Bill Section -->
+  <div style="margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+    <strong style="font-size:13px;">Bill Section</strong>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="addItem()">+ Add New</button>
+  </div>
+
+  <table id="items-table" style="margin-bottom:16px;">
+    <thead>
+      <tr>
+        <th>Product ID</th>
+        <th>Product Name</th>
+        <th>Quantity</th>
+        <th style="width:36px;"></th>
+      </tr>
+    </thead>
+    <tbody id="items-body">
+      <!-- rows injected by JS -->
+    </tbody>
+  </table>
+
+  <hr class="separator" />
+
+  <!-- Denominations -->
+  <div style="margin-bottom:16px;">
+    <strong style="font-size:13px;display:block;margin-bottom:12px;">Denominations in Shop</strong>
+    <div class="denom-grid">
+      {% for denom in denominations %}
+      <label class="denom-label">₹ {{ denom }}</label>
+      <input type="number" id="denom_{{ denom }}" name="denom_{{ denom }}"
+             placeholder="Count" min="0" value="0"
+             style="width:100px;" />
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Cash Paid -->
+  <div style="margin-bottom:20px;">
+    <label for="cash_paid">
+      Cash Paid by Customer (₹)
+      <span id="cash-auto-hint" style="font-size:11px;color:#888;font-weight:400;margin-left:6px;">
+      </span>
+    </label>
+    <input type="number" id="cash_paid" placeholder="Amount" min="0" step="0.01"
+           style="max-width:200px;" />
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;gap:10px;justify-content:flex-end;">
+    <button type="button" class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+    <button type="button" class="btn btn-success" onclick="generateBill()">Generate Bill</button>
+  </div>
+</div>
+
+<script>
+  const DENOMINATIONS = {{ denominations|safe }};
+  let itemCount = 0;
+
+  // ── Denomination auto-calculate ──────────────────────────────────────────
+  function calculateCashFromDenominations() {
+    let total = 0;
+    DENOMINATIONS.forEach(d => {
+      const val = parseInt(document.getElementById(`denom_${d}`)?.value || '0', 10);
+      if (!isNaN(val) && val > 0) total += d * val;
+    });
+    document.getElementById('cash_paid').value = total > 0 ? total : '';
+  }
+
+  function attachDenomListeners() {
+    DENOMINATIONS.forEach(d => {
+      const el = document.getElementById(`denom_${d}`);
+      if (el) el.addEventListener('input', calculateCashFromDenominations);
+    });
+  }
+
+  // ── Item rows ────────────────────────────────────────────────────────────
+  function addItem() {
+    itemCount++;
+    const tbody = document.getElementById('items-body');
+    const row = document.createElement('tr');
+    row.id = `item-row-${itemCount}`;
+    row.innerHTML = `
+      <td>
+        <input type="text" id="pid-${itemCount}" placeholder="e.g. P001"
+               list="product-list" style="width:100%;" oninput="handleProductInput(${itemCount})" onblur="fetchProduct(${itemCount})" />
+      </td>
+      <td>
+        <input type="text" id="pname-${itemCount}" placeholder="—"
+               style="width:100%;background:#f9f9f9;" readonly />
+      </td>
+      <td>
+        <input type="number" id="qty-${itemCount}" placeholder="Quantity"
+               min="1" style="width:100px;" />
+      </td>
+      <td>
+        <button type="button" class="btn btn-danger btn-sm"
+                onclick="removeItem(${itemCount})">✕</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+    document.getElementById(`pid-${itemCount}`).focus();
+  }
+
+  function removeItem(id) {
+    document.getElementById(`item-row-${id}`)?.remove();
+  }
+  function handleProductInput(id) {
+    const pid = document.getElementById(`pid-${id}`).value.trim();
+    // Only fetch when a full product ID is typed/selected (e.g. P001)
+    if (pid.length >= 4) fetchProduct(id);
+  }
+  async function fetchProduct(id) {
+    const pid = document.getElementById(`pid-${id}`).value.trim();
+    if (!pid) return;
+    try {
+      const res = await fetch(`/api/product/?product_id=${encodeURIComponent(pid)}`);
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById(`pname-${id}`).value =
+          `${data.name}  |  ₹${data.unit_price}  |  Tax: ${data.tax_percentage}%  |  Stock: ${data.available_stocks}`;
+      } else {
+        document.getElementById(`pname-${id}`).value = '⚠ Product not found';
+      }
+    } catch { }
+  }
+
+  // ── Generate bill ────────────────────────────────────────────────────────
+  async function generateBill() {
+    const email = document.getElementById('customer_email').value.trim();
+    const rows = document.querySelectorAll('#items-body tr');
+    const items = [];
+
+    rows.forEach(row => {
+      const id = row.id.replace('item-row-', '');
+      const product_id = document.getElementById(`pid-${id}`).value.trim();
+      const quantity = parseInt(document.getElementById(`qty-${id}`).value, 10);
+      if (product_id && quantity > 0) items.push({ product_id, quantity });
+    });
+
+    const denominations = {};
+    DENOMINATIONS.forEach(d => {
+      const val = parseInt(document.getElementById(`denom_${d}`)?.value || '0', 10);
+      denominations[String(d)] = val;
+    });
+
+    const cash_paid = parseFloat(document.getElementById('cash_paid').value || '0');
+
+    hideError();
+
+    try {
+      const res = await fetch('/generate/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ customer_email: email, items, denominations, cash_paid }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = `/bill/${data.purchase_id}/`;
+      } else {
+        const msg = data.error || (data.errors && data.errors.join('<br>')) || 'Unknown error';
+        showError(msg);
+      }
+    } catch (e) {
+      showError('Network error. Please try again.');
+    }
+  }
+
+  // ── Reset ────────────────────────────────────────────────────────────────
+  function resetForm() {
+    document.getElementById('customer_email').value = '';
+    document.getElementById('items-body').innerHTML = '';
+    document.getElementById('cash_paid').value = '';
+    DENOMINATIONS.forEach(d => {
+      const el = document.getElementById(`denom_${d}`);
+      if (el) el.value = '0';
+    });
+    hideError();
+    itemCount = 0;
+    addItem();   // reset back to one empty row
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.innerHTML = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function hideError() {
+    document.getElementById('error-box').style.display = 'none';
+  }
+  function getCsrf() {
+    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  addItem();
+  attachDenomListeners();   // ← auto-calculate cash from denominations
+</script>
+{% endblock %}

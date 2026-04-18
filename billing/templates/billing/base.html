@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Billing System{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      background: #f4f5f7;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+    nav {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+    nav a { color: #a8b4c8; text-decoration: none; font-size: 13px; }
+    nav a:hover, nav a.active { color: #fff; }
+    nav .brand { font-weight: 700; font-size: 15px; color: #fff; margin-right: auto; }
+    .container { max-width: 960px; margin: 28px auto; padding: 0 20px; }
+    .card {
+      background: #fff;
+      border: 1px solid #e2e5ea;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e2e5ea;
+    }
+    label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    input[type=text], input[type=email], input[type=number] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 5px;
+      font-size: 13px;
+      transition: border-color .2s;
+    }
+    input:focus { outline: none; border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,.12); }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background .2s;
+    }
+    .btn-primary { background: #4361ee; color: #fff; }
+    .btn-primary:hover { background: #3451d1; }
+    .btn-success { background: #2d9c3e; color: #fff; }
+    .btn-success:hover { background: #237830; }
+    .btn-secondary { background: #e2e5ea; color: #333; }
+    .btn-secondary:hover { background: #d0d5dd; }
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #f4f5f7; font-size: 11px; font-weight: 700; text-transform: uppercase;
+         color: #666; padding: 8px 10px; text-align: left; border-bottom: 2px solid #e2e5ea; }
+    td { padding: 9px 10px; border-bottom: 1px solid #f0f1f3; font-size: 13px; }
+    tr:last-child td { border-bottom: none; }
+    .text-right { text-align: right; }
+    .summary-table { width: auto; margin-left: auto; min-width: 320px; }
+    .summary-table td { padding: 6px 10px; border: none; }
+    .summary-table .total-row td { font-weight: 700; border-top: 2px solid #e2e5ea; }
+    .alert { padding: 10px 14px; border-radius: 5px; font-size: 13px; margin-bottom: 14px; }
+    .alert-error { background: #fdecea; color: #b71c1c; border: 1px solid #f5c6c6; }
+    .alert-success { background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
+    .separator { border: none; border-top: 2px solid #e2e5ea; margin: 20px 0; }
+    .denom-grid { display: grid; grid-template-columns: 80px 120px; gap: 8px 16px; align-items: center; }
+    .denom-label { font-weight: 700; font-size: 13px; }
+    .row-flex { display: flex; gap: 12px; align-items: flex-end; }
+    .row-flex > * { flex: 1; }
+    .row-flex .btn { flex: none; margin-bottom: 0; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge-blue { background: #e3eafd; color: #2d4faa; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">🧾 Billing System</span>
+    <a href="{% url 'billing:billing_form' %}">New Bill</a>
+    <a href="{% url 'billing:purchase_history' %}">Purchase History</a>
+    <a href="/admin/">Admin</a>
+  </nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
